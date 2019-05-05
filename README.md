@@ -1,6 +1,7 @@
 # bib
 
-tiny bash script to manage top-level pip packages.
+tiny bash script to manage top-level pip packages
+(package _you've_ installed - all transitive dependencies).
 I thought that I should use pip in reverse,
 but pip is a palindrome.
 
@@ -17,12 +18,11 @@ some time later:
 
     $ bib outdated
     spotdl
-    $ bib outdated | xargs pip install -U
 
 bib basically maintains a directory of files,
 where each file contains your top-level pip packages.
 when you run `bib outdated`,
-you get the intersection of the outdated packages and the top level packages.
+you get the intersection of the outdated packages and packages you've added to bib.
 
 bib doesn't know about versions.
 as such it should only be used to manage your
