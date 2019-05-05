@@ -65,13 +65,13 @@ outdated() {
     init "$version_hash"
     file=~/.bib/"$version_hash"
     comm <(pip list --outdated | tail +3 | cut -d ' ' -f1 | sort) \
-         <(sort -u < "$file") \
-         -1 -2
+         <(sort -u "$file") \
+         -12
 }
 
 remove_line_in_file() {
     contents=$(
-        sort -u < "$2" | while read -r line; do
+        sort -u "$2" | while read -r line; do
             [ "$line" = '' ] && continue
             [ "$line" != "$1" ] && echo "$line"
         done
@@ -112,7 +112,7 @@ add() {
 
     # check if the package is already present
     # if yes then don't do anything
-    if [ "$(echo "$pkg" | comm - <(sort < ~/.bib/"$version_hash") -1 -2)" = "" ]; then
+    if [ "$(echo "$pkg" | comm - <(cat ~/.bib/"$version_hash") --nocheck-order -12)" = "" ]; then
         echo "$pkg" >> ~/.bib/"$version_hash"
     fi
 }
