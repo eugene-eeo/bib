@@ -1,0 +1,114 @@
+#!/bin/bash
+
+usage() {
+    echo
+    echo "usage:"
+    echo "    $0 outdated"
+    echo "    $0 path [<version>]"
+    echo "    $0 cat  [<version>]"
+    echo "    $0 add <pkg> [<version>]"
+    echo "    $0 del <pkg> [<version>]"
+    echo "    $0 help | --help | -h"
+    echo
+    exit "$1"
+}
+
+main() {
+    case "$1" in
+        help|--help|-h)
+            usage 0
+            ;;
+        outdated)
+            shift;
+            outdated "$@"
+            ;;
+        path)
+            echo ~/.bib/"$(try_get_hash "$2")"
+            ;;
+        cat)
+            cat "$($0 path "$2")" 2> /dev/null
+            ;;
+        add) shift; add "$@" ;;
+        del) shift; del "$@" ;;
+        *)   usage 1 ;;
+    esac
+}
+
+get_version_hash() {
+    if [ "$1" = '-' ]; then
+        echo -n -
+    else
+        echo "$1" | md5sum - | grep -oE '^.{8}'
+    fi
+}
+
+init() {
+    mkdir -p ~/.bib
+    [ "$1" ] && touch ~/.bib/"$1"
+}
+
+try_get_hash() {
+    version="$1"
+    [ "$1" = '' ] && version=$(pyenv version-name || echo -)
+    get_version_hash "$version"
+}
+
+outdated() {
+    version_hash=$(try_get_hash "$1")
+    init "$version_hash"
+    file=~/.bib/"$version_hash"
+    comm <(pip list --outdated | tail +3 | cut -d ' ' -f1 | sort) \
+         <(sort -u < "$file") \
+         -1 -2
+}
+
+remove_line_in_file() {
+    contents=$(
+        # shellcheck disable=2002
+        cat "$2" | while read -r line; do
+            [ "$line" = '' ] && continue
+            [ "$line" != "$1" ] && echo "$line"
+        done
+        )
+    if [ "$contents" = '' ]; then
+        echo -n '' > "$2"
+    else
+        echo "$contents" > "$2"
+    fi
+}
+
+del() {
+    pkg=$1
+    version_hash=$(try_get_hash "$2")
+
+    [ "$pkg" = "" ] && usage 1
+
+    init "$version_hash"
+    file=~/.bib/"$version_hash"
+
+    tmpfile=$(mktemp)
+    (
+        # this is transactional, avoid nuking
+        # ~/.bib/... if something goes wrong
+        cp "$file" "$tmpfile" \
+            && remove_line_in_file "$pkg" "$tmpfile" \
+            && mv "$tmpfile" "$file"
+    ) || rm "$tmpfile"
+}
+
+add() {
+    pkg=$1
+    version_hash=$(try_get_hash "$2")
+
+    [ "$pkg" = "" ] && usage 1
+
+    init "$version_hash"
+
+    # check if the package is already present
+    # if yes then don't do anything
+    if [ "$(echo "$pkg" | comm - <(sort < ~/.bib/"$version_hash") -1 -2)" = "" ]; then
+        echo "$pkg" >> ~/.bib/"$version_hash"
+    fi
+}
+
+main "$@"
