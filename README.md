@@ -1,7 +1,7 @@
 # bib
 
 tiny bash script to manage top-level pip packages
-(package _you've_ installed - all transitive dependencies).
+(package _you've_ installed without all transitive dependencies).
 I thought that I should use pip in reverse,
 but pip is a palindrome.
 
