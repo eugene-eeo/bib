@@ -27,24 +27,17 @@ main() {
         help|--help|-h)
             usage 0
             ;;
-        outdated)
-            shift;
-            outdated "$@"
-            ;;
         path)
-            echo ~/.bib/"$(try_get_hash "$2")"
+            echo ~/.bib/"$(get_version "$2")"
             ;;
         cat)
-            cat "$($0 path "$2")" 2> /dev/null
+            cat ~/.bib/"$(get_version "$2")" 2> /dev/null
             ;;
-        add) shift; add "$@" ;;
-        del) shift; del "$@" ;;
-        *)   usage 1 ;;
+        outdated) shift; outdated "$@" ;;
+        add)      shift; add "$@" ;;
+        del)      shift; del "$@" ;;
+        *)        usage 1 ;;
     esac
-}
-
-get_version_hash() {
-    echo "$1" | md5sum - | grep -oE '^.{8}'
 }
 
 init() {
@@ -52,17 +45,19 @@ init() {
     touch ~/.bib/"$1"
 }
 
-try_get_hash() {
-    local version="$1"
-    [ "$1" = '' ] && version=$(pyenv version-name || python --version)
-    get_version_hash "$version"
+get_version() {
+    if [ "$1" = '' ]; then
+        pyenv version-name || python -c 'import platform;print(platform.python_version())'
+    else
+        echo "$1"
+    fi
 }
 
 outdated() {
-    local version_hash=$(try_get_hash)
-    init "$version_hash"
+    local version=$(get_version "$1")
+    init "$version"
     comm <(pip list --outdated | tail +3 | cut -d ' ' -f1 | sort) \
-         <(sort -u ~/.bib/"$version_hash") \
+         <(sort -u ~/.bib/"$version") \
          -12
 }
 
@@ -76,18 +71,18 @@ remove_line_in_file() {
     if [ "$contents" = '' ]; then
         echo -n '' > "$2"
     else
-        echo "$contents" > "$2"
+        echo -n "$contents" > "$2"
     fi
 }
 
 del() {
     local pkg=$1
-    local version_hash=$(try_get_hash "$2")
+    local version=$(get_version "$2")
 
     [ "$pkg" = "" ] && usage 1
 
-    init "$version_hash"
-    local file=~/.bib/"$version_hash"
+    init "$version"
+    local file=~/.bib/"$version"
     local tmpfile
 
     {
@@ -102,16 +97,16 @@ del() {
 
 add() {
     local pkg=$1
-    local version_hash=$(try_get_hash "$2")
+    local version=$(get_version "$2")
 
     [ "$pkg" = "" ] && usage 1
 
-    init "$version_hash"
+    init "$version"
 
     # check if the package is already present
     # if yes then don't do anything
-    if [ "$(echo "$pkg" | comm - <(cat ~/.bib/"$version_hash") --nocheck-order -12)" = "" ]; then
-        echo "$pkg" >> ~/.bib/"$version_hash"
+    if [ "$(echo "$pkg" | comm - <(cat ~/.bib/"$version") --nocheck-order -12)" = "" ]; then
+        echo "$pkg" >> ~/.bib/"$version"
     fi
 }
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-setup() {
+teardown() {
     rm "$(bib path _test)"
 }
 
